@@ -1,0 +1,65 @@
+from flask import Flask, request, redirect
+import uuid
+
+app = Flask(__name__)
+messages = []
+
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Terminal partagé</title>
+  <style>
+    body { background: black; color: lime; font-family: monospace; padding: 20px; }
+    input[type=text] { width: 80%%; background: black; color: lime; border: 1px solid lime; padding: 5px; }
+    button { background: lime; color: black; border: none; padding: 5px 10px; font-weight: bold; }
+    .message { margin: 10px 0; }
+    .code { color: gray; font-size: 0.8em; }
+    form.inline { display: inline; margin-left: 10px; }
+  </style>
+</head>
+<body>
+  <h1>💬 Terminal partagé</h1>
+  <form method="POST">
+    <input type="text" name="command" placeholder="Tape ton message ici">
+    <button>Envoyer</button>
+  </form>
+  <hr>
+  %s
+</body>
+</html>
+"""
+
+@app.route("/", methods=["GET", "POST"])
+def terminal():
+    global messages
+    if request.method == "POST":
+        cmd = request.form.get("command")
+        delete_code = request.form.get("delete")
+
+        if delete_code:
+            messages = [m for m in messages if m["code"] != delete_code]
+        elif cmd:
+            code = str(uuid.uuid4())[:8]
+            messages.append({"text": cmd.strip(), "code": code})
+
+        return redirect("/")
+
+    html_messages = ""
+    for m in messages:
+        html_messages += f'''
+        <div class="message">
+          {m["text"]}<br>
+          <span class="code">code: {m["code"]}</span>
+          <form method="POST" class="inline">
+            <input type="hidden" name="delete" value="{m["code"]}">
+            <button>Supprimer</button>
+          </form>
+        </div>
+        '''
+
+    return HTML_TEMPLATE % html_messages
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
